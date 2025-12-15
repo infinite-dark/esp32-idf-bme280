@@ -62,6 +62,28 @@ typedef enum : uint8_t {
 } bme280_standby_duration_t;
 
 typedef struct {
+    uint16_t dig_T1;
+    int16_t dig_T2;
+    int16_t dig_T3;
+
+    uint16_t dig_P1;
+    int16_t dig_P2;
+    int16_t dig_P3;
+    int16_t dig_P4;
+    int16_t dig_P5;
+    int16_t dig_P6;
+    int16_t dig_P7;
+    int16_t dig_P8;
+    int16_t dig_P9;
+
+    uint8_t dig_H1;
+    int16_t dig_H2;
+    uint8_t dig_H3;
+    int16_t dig_H4;
+    int16_t dig_H5;
+} bme280_calib_t;
+
+typedef struct {
     uint8_t padding_up : 4;
     uint8_t measuring : 1;
     uint8_t padding_mid : 2;
@@ -78,3 +100,10 @@ typedef struct {
     bme280_oversampling_t osrs_p : 3;
     bme280_mode_t mode : 2;
 } bme280_ctrl_meas_t;
+
+typedef struct {
+    bme280_standby_duration_t t_sb : 3;
+    bme280_filter_t filter : 3;
+    uint8_t unused : 1;
+    uint8_t spi3w_en : 1;
+} bme280_config_t;
