@@ -8,5 +8,56 @@
 #define BME280_CHIP_ID_REG          ((uint8_t)0xD0)    // Chip ID register
 #define BME280_CHIP_ID_VAL          ((uint8_t)0x60)    // Default ID value
 
-#define BME280_RESET_REG            ((uint8_t)0xE0)
+#define BME280_RESET_REG            ((uint8_t)0xE0)    // Soft reset register
+#define BME280_STATUS_REG           ((uint8_t)0xF3)    // Measurement/result status register
+
+#define BME280_CTRL_HUM_REG         ((uint8_t)0xF2)    // Humidity oversampling control
+#define BME280_CTRL_MEAS_REG        ((uint8_t)0xF4)    // Temperature and pressure oversampling control + mode field
+#define BME280_CONFIG_REG           ((uint8_t)0xF5)    // Standby time, filter setting, SPI enable flag
+
+
+#define BME280_TEMPERATURE_REG        ((uint8_t)0xFA)
+#define BME280_TEMPERATURE_REG_COUNT  3
+
+#define BME280_PRESSURE_REG           ((uint8_t)0xF7)
+#define BME280_PRESSURE_REG_COUNT     3
+
+#define BME280_HUMIDITY_RED           ((uint8_t)0xFD)
+#define BME280_HUMIDITY_REG_COUNT     2
+
+
+typedef enum : uint8_t {
+    BME280_OVERSAMPLING_SKIP,
+    BME280_OVERSAMPLING_X1,
+    BME280_OVERSAMPLING_X2,
+    BME280_OVERSAMPLING_X4,
+    BME280_OVERSAMPLING_X8,
+    BME280_OVERSAMPLING_X16,
+} bme280_oversampling_t;
+
+typedef enum : uint8_t {
+    BME280_MODE_SLEEP,
+    BME280_MODE_FORCED,
+    BME280_MODE_FORCED_ALT,
+    BME280_MODE_NORMAL,
+} bme280_mode_t;
+
+typedef enum : uint8_t {
+    BME280_FILTER_OFF,
+    BME280_FILTER_X2,
+    BME280_FILTER_X4,
+    BME280_FILTER_X8,
+    BME280_FILTER_X16,
+} bme280_filter_t;
+
+typedef enum : uint8_t {
+    BME280_STANDBY_MS_0_5 = 0b000,
+    BME280_STANDBY_MS_10 = 0b110,
+    BME280_STANDBY_MS_20 = 0b111,
+    BME280_STANDBY_MS_62_5 = 0b001,
+    BME280_STANDBY_MS_125 = 0b010,
+    BME280_STANDBY_MS_250 = 0b011,
+    BME280_STANDBY_MS_500 = 0b100,
+    BME280_STANDBY_MS_1000 = 0b101
+} bme280_standby_duration_t;
 
