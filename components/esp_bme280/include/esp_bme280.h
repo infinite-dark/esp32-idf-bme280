@@ -61,3 +61,20 @@ typedef enum : uint8_t {
     BME280_STANDBY_MS_1000 = 0b101
 } bme280_standby_duration_t;
 
+typedef struct {
+    uint8_t padding_up : 4;
+    uint8_t measuring : 1;
+    uint8_t padding_mid : 2;
+    uint8_t im_update : 1;
+} bme280_status_t;
+
+typedef struct {
+    uint8_t padding : 5;
+    bme280_oversampling_t osrs_h : 3;
+} bme280_ctrl_hum_t;
+
+typedef struct {
+    bme280_oversampling_t osrs_t : 3;
+    bme280_oversampling_t osrs_p : 3;
+    bme280_mode_t mode : 2;
+} bme280_ctrl_meas_t;
