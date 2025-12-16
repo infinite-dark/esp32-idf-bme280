@@ -15,7 +15,7 @@
 #define BME280_CTRL_MEAS_REG        ((uint8_t)0xF4)    // Temperature and pressure oversampling control + mode field
 #define BME280_CONFIG_REG           ((uint8_t)0xF5)    // Standby time, filter setting, SPI enable flag
 
-
+// will add comments later
 #define BME280_TEMPERATURE_REG        ((uint8_t)0xFA)
 #define BME280_TEMPERATURE_REG_COUNT  3
 
@@ -81,6 +81,7 @@ typedef struct {
     uint8_t dig_H3;
     int16_t dig_H4;
     int16_t dig_H5;
+    uint8_t dig_H6;
 } bme280_calib_t;
 
 typedef struct {
@@ -107,3 +108,12 @@ typedef struct {
     uint8_t unused : 1;
     uint8_t spi3w_en : 1;
 } bme280_config_t;
+
+typedef struct {
+    i2c_master_dev_handle_t dev_handle;
+    bme280_ctrl_meas_t ctrl_meas;
+    bme280_ctrl_hum_t ctrl_hum;
+    bme280_config_t config;
+    bme280_status_t status;
+    bme280_calib_t calib;
+} bme280_sensor_t;
