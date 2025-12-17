@@ -95,25 +95,25 @@ typedef struct {
     uint8_t padding_middle : 2;
     uint8_t measuring : 1;
     uint8_t padding_upper : 4;
-} bme280_status_t;
+} __attribute__((packed)) bme280_status_t;
 
 typedef struct {
     bme280_oversampling_t osrs_h : 3;
     uint8_t padding : 5;
-} bme280_ctrl_hum_t;
+} __attribute__((packed)) bme280_ctrl_hum_t;
 
 typedef struct {
     bme280_mode_t mode : 2;
     bme280_oversampling_t osrs_p : 3;
     bme280_oversampling_t osrs_t : 3;
-} bme280_ctrl_meas_t;
+} __attribute__((packed)) bme280_ctrl_meas_t;
 
 typedef struct {
     uint8_t spi3w_en : 1;
     uint8_t unused : 1;
     bme280_filter_t filter : 3;
     bme280_standby_duration_t t_sb : 3;
-} bme280_config_t;
+} __attribute__((packed)) bme280_config_t;
 
 typedef struct {
     i2c_master_dev_handle_t dev_handle;
@@ -123,3 +123,6 @@ typedef struct {
     bme280_status_t status;
     bme280_calib_t calib;
 } bme280_sensor_t;
+
+
+int32_t compensate_temperature(const bme280_sensor_t * sensor, int32_t adc_T, int32_t * T_fine);
