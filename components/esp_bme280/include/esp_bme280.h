@@ -15,15 +15,21 @@
 #define BME280_CTRL_MEAS_REG        ((uint8_t)0xF4)    // Temperature and pressure oversampling control + mode field
 #define BME280_CONFIG_REG           ((uint8_t)0xF5)    // Standby time, filter setting, SPI enable flag
 
-// will add comments later
-#define BME280_TEMPERATURE_REG        ((uint8_t)0xFA)
-#define BME280_TEMPERATURE_REG_COUNT  3
 
-#define BME280_PRESSURE_REG           ((uint8_t)0xF7)
-#define BME280_PRESSURE_REG_COUNT     3
+/* -------------------------------------------------------------------------
+ * Register map is purposely not fully defined.
+ * The BME has register auto-increment functionality during burst reads.
+ * ------------------------------------------------------------------------- */
 
-#define BME280_HUMIDITY_RED           ((uint8_t)0xFD)
-#define BME280_HUMIDITY_REG_COUNT     2
+// Raw measurement value holding registers.
+#define BME280_TEMPERATURE_REG        ((uint8_t)0xFA)  // Temperature first register (MSB)
+#define BME280_TEMPERATURE_SIZE       3                // Temperature value total byte count
+
+#define BME280_PRESSURE_REG           ((uint8_t)0xF7)  // Pressure first register (MSB)
+#define BME280_PRESSURE_SIZE          3                // Pressure value total byte count
+
+#define BME280_HUMIDITY_RED           ((uint8_t)0xFD)  // Humidity first register (MSB)
+#define BME280_HUMIDITY_SIZE          2                // Humidity value byte count
 
 
 typedef enum : uint8_t {
@@ -85,28 +91,28 @@ typedef struct {
 } bme280_calib_t;
 
 typedef struct {
-    uint8_t padding_up : 4;
-    uint8_t measuring : 1;
-    uint8_t padding_mid : 2;
     uint8_t im_update : 1;
+    uint8_t padding_middle : 2;
+    uint8_t measuring : 1;
+    uint8_t padding_upper : 4;
 } bme280_status_t;
 
 typedef struct {
-    uint8_t padding : 5;
     bme280_oversampling_t osrs_h : 3;
+    uint8_t padding : 5;
 } bme280_ctrl_hum_t;
 
 typedef struct {
-    bme280_oversampling_t osrs_t : 3;
-    bme280_oversampling_t osrs_p : 3;
     bme280_mode_t mode : 2;
+    bme280_oversampling_t osrs_p : 3;
+    bme280_oversampling_t osrs_t : 3;
 } bme280_ctrl_meas_t;
 
 typedef struct {
-    bme280_standby_duration_t t_sb : 3;
-    bme280_filter_t filter : 3;
-    uint8_t unused : 1;
     uint8_t spi3w_en : 1;
+    uint8_t unused : 1;
+    bme280_filter_t filter : 3;
+    bme280_standby_duration_t t_sb : 3;
 } bme280_config_t;
 
 typedef struct {
