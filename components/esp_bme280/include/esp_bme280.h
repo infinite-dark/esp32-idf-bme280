@@ -124,5 +124,19 @@ typedef struct {
     bme280_calib_t calib;
 } bme280_sensor_t;
 
+typedef struct {
+    bme280_mode_t measurement_mode;
+    bme280_oversampling_t temperature_oversampling;
+    bme280_oversampling_t pressure_oversampling;
+    bme280_oversampling_t humidity_oversampling;
+    bme280_filter_t filter_mode;
+    bme280_standby_duration_t standby_duration;
+} bme280_device_config_t;
+
+esp_err_t bme280_create(i2c_master_bus_handle_t bus_handle, const i2c_device_config_t * dev_cfg);
+esp_err_t bme280_create_default(i2c_master_bus_handle_t bus_handle, uint8_t address);
+esp_err_t bme280_init(bme280_sensor_t * bme280_sensor, bme280_device_config_t * bme280_device_config);
+esp_err_t bme280_init_default(bme280_sensor_t * bme280_sensor);
+esp_err_t bme280_delete(bme280_sensor_t * bme280_sensor);
 
 int32_t compensate_temperature(const bme280_sensor_t * sensor, int32_t adc_T, int32_t * T_fine);

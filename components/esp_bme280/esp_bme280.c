@@ -1,5 +1,10 @@
 #include "esp_bme280.h"
 
+esp_err_t bme280_create(i2c_master_bus_handle_t bus_handle, const i2c_device_config_t * const dev_cfg) {
+
+    return ESP_OK;
+
+}
 
 int32_t compensate_temperature(const bme280_sensor_t * const sensor, const int32_t adc_T, int32_t * const T_fine) {
 
