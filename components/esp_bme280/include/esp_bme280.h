@@ -116,15 +116,6 @@ typedef struct {
 } __attribute__((packed)) bme280_config_t;
 
 typedef struct {
-    i2c_master_dev_handle_t dev_handle;
-    bme280_ctrl_meas_t ctrl_meas;
-    bme280_ctrl_hum_t ctrl_hum;
-    bme280_config_t config;
-    bme280_status_t status;
-    bme280_calib_t calib;
-} bme280_sensor_t;
-
-typedef struct {
     bme280_mode_t measurement_mode;
     bme280_oversampling_t temperature_oversampling;
     bme280_oversampling_t pressure_oversampling;
@@ -133,10 +124,15 @@ typedef struct {
     bme280_standby_duration_t standby_duration;
 } bme280_device_config_t;
 
-esp_err_t bme280_create(i2c_master_bus_handle_t bus_handle, const i2c_device_config_t * dev_cfg);
-esp_err_t bme280_create_default(i2c_master_bus_handle_t bus_handle, uint8_t address);
-esp_err_t bme280_init(bme280_sensor_t * bme280_sensor, bme280_device_config_t * bme280_device_config);
-esp_err_t bme280_init_default(bme280_sensor_t * bme280_sensor);
-esp_err_t bme280_delete(bme280_sensor_t * bme280_sensor);
 
-int32_t compensate_temperature(const bme280_sensor_t * sensor, int32_t adc_T, int32_t * T_fine);
+typedef struct bme280_sensor bme280_sensor_t;
+typedef bme280_sensor_t *bme280_handle_t;
+typedef const bme280_sensor_t *bme280_const_handle_t;
+
+esp_err_t bme280_create(i2c_master_bus_handle_t bus_handle, const i2c_device_config_t * dev_cfg, bme280_handle_t *out_handle);
+esp_err_t bme280_create_default(i2c_master_bus_handle_t bus_handle, uint8_t dev_addr, bme280_handle_t *out_handle);
+esp_err_t bme280_init(bme280_handle_t bme280_sensor, bme280_device_config_t * bme280_device_config);
+esp_err_t bme280_init_default(bme280_handle_t bme280_sensor);
+esp_err_t bme280_delete(bme280_handle_t * bme280_sensor);
+
+int32_t compensate_temperature(bme280_const_handle_t sensor, int32_t adc_T, int32_t * T_fine);
