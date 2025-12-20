@@ -2,7 +2,7 @@
 #include <esp_check.h>
 
 
-static const char *TAG = "BME280 API";
+static const char* const API_TAG = "bme280_api";
 
 struct bme280_sensor {
     i2c_master_dev_handle_t dev_handle;
@@ -20,27 +20,41 @@ esp_err_t bme280_create(i2c_master_bus_handle_t bus_handle, const i2c_device_con
         return ESP_ERR_INVALID_ARG;
     }
 
-    i2c_master_dev_handle_t dev_handle;
-    const esp_err_t ret = i2c_master_bus_add_device(bus_handle, dev_cfg, &dev_handle);
-    ESP_RETURN_ON_ERROR(ret, TAG, "Failed to add BME280 to I2C bus");
+    esp_err_t ret;
 
-    struct bme280_sensor *sensor = calloc(1, sizeof(*sensor));
+    i2c_master_dev_handle_t dev_handle;
+    ret = i2c_master_bus_add_device(bus_handle, dev_cfg, &dev_handle);
+    ESP_GOTO_ON_ERROR(ret, err_return, API_TAG, "Failed to add the device to the I2C bus");
+
+    ret = i2c_master_probe(bus_handle, dev_cfg->device_address, 100);
+    ESP_GOTO_ON_ERROR(ret, err_release, API_TAG, "Failed to find the BME280 at address 0x%x", dev_cfg->device_address);
+
+    struct bme280_sensor * sensor = calloc(1, sizeof(*sensor));
     if (!sensor) {
-        i2c_master_bus_rm_device(dev_handle);
-        ESP_LOGE(TAG, "Failed to allocate BME280 sensor context");
-        return ESP_ERR_NO_MEM;
+        ESP_LOGE(API_TAG, "Failed to allocate the BME280 sensor context");
+        ret = ESP_ERR_NO_MEM;
+        goto err_release;
     }
 
     sensor->dev_handle = dev_handle;
-
     *out_handle = sensor;
+
+    ESP_LOGI(API_TAG, "Success creating BME280", dev_cfg->device_address);      // TODO: fix message later
+
     return ESP_OK;
+
+err_release:
+    i2c_master_bus_rm_device(dev_handle);
+err_return:
+    ESP_LOGE(API_TAG, "Error creating BME280");     // TODO: fix message later
+    return ret;
+
 }
 
 esp_err_t bme280_create_default(i2c_master_bus_handle_t bus_handle, const uint8_t dev_addr, bme280_handle_t * const out_handle) {
 
     if (dev_addr != BME280_I2C_ADDRESS_DEFAULT && dev_addr != BME280_I2C_ADDRESS_ALTER) {
-        ESP_LOGW(TAG, "Uncommon BME280 I2C address 0x%02x", dev_addr);
+        ESP_LOGW(API_TAG, "Uncommon BME280 I2C address 0x%02x", dev_addr);
     }
 
     const i2c_device_config_t dev_cfg = {
@@ -58,6 +72,7 @@ esp_err_t bme280_create_default(i2c_master_bus_handle_t bus_handle, const uint8_
 esp_err_t bme280_delete(bme280_handle_t * const bme280_sensor) {
 
     if (bme280_sensor == NULL || *bme280_sensor == NULL) {
+        ESP_LOGW(API_TAG, "Invalid argument - attempting to delete NULL");  // TODO: fix message later
         return ESP_ERR_INVALID_ARG;
     }
 

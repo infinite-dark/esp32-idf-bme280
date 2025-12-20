@@ -26,7 +26,6 @@ void app_main(void) {
     ESP_ERROR_CHECK(bme280_create_default(bus_handle, BME280_I2C_ADDRESS_DEFAULT, &sensor));
 
     if (sensor != NULL) {
-        ESP_LOGI(TAG, "Sensor created! All good!");
         bme280_delete(&sensor);
     }
 
