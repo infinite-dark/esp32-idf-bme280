@@ -16,6 +16,14 @@
 #define BME280_CTRL_MEAS_REG        ((uint8_t)0xF4)    // Temperature and pressure oversampling control + mode field
 #define BME280_CONFIG_REG           ((uint8_t)0xF5)    // Standby time, filter setting, SPI enable flag
 
+#define BME280_CALIB_TEMP_PRES_FIRST_REG    ((uint8_t)0x88)
+#define BME280_CALIB_TEMP_PRES_LAST_REG     ((uint8_t)0x9F)
+#define BME280_CALIB_TEMP_PRESS_REG_COUNT   ((uint8_t)(BME280_CALIB_TEMP_PRES_LAST_REG - BME280_CALIB_TEMP_PRES_FIRST_REG + 1))
+
+#define BME280_CALIB_HUMIDITY_FIRST_REG     ((uint8_t)0xA1)
+#define BME280_CALIB_HUMIDITY_SECOND_REG    ((uint8_t)0xE1)
+#define BME280_CALIB_HUMIDITY_LAST_REG      ((uint8_t)0xE7)
+#define BME280_CALIB_HUMIDITY_REG_COUNT     8
 
 /* -------------------------------------------------------------------------
  * Register map is purposely not fully defined.
@@ -29,7 +37,7 @@
 #define BME280_PRESSURE_REG           ((uint8_t)0xF7)  // Pressure first register (MSB)
 #define BME280_PRESSURE_SIZE          3                // Pressure value total byte count
 
-#define BME280_HUMIDITY_RED           ((uint8_t)0xFD)  // Humidity first register (MSB)
+#define BME280_HUMIDITY_REG           ((uint8_t)0xFD)  // Humidity first register (MSB)
 #define BME280_HUMIDITY_SIZE          2                // Humidity value byte count
 
 
@@ -68,28 +76,32 @@ typedef enum : uint8_t {
     BME280_STANDBY_MS_1000 = 0b101
 } bme280_standby_duration_t;
 
+typedef union {
+    struct {
+        uint16_t dig_T1;
+        int16_t  dig_T2;
+        int16_t  dig_T3;
+        uint16_t dig_P1;
+        int16_t  dig_P2;
+        int16_t  dig_P3;
+        int16_t  dig_P4;
+        int16_t  dig_P5;
+        int16_t  dig_P6;
+        int16_t  dig_P7;
+        int16_t  dig_P8;
+        int16_t  dig_P9;
+    } __attribute__((packed)) calib;
+    uint8_t raw[BME280_CALIB_TEMP_PRESS_REG_COUNT];
+} bme280_calib_temp_press_t;
+
 typedef struct {
-    uint16_t dig_T1;
-    int16_t dig_T2;
-    int16_t dig_T3;
-
-    uint16_t dig_P1;
-    int16_t dig_P2;
-    int16_t dig_P3;
-    int16_t dig_P4;
-    int16_t dig_P5;
-    int16_t dig_P6;
-    int16_t dig_P7;
-    int16_t dig_P8;
-    int16_t dig_P9;
-
-    uint8_t dig_H1;
-    int16_t dig_H2;
-    uint8_t dig_H3;
-    int16_t dig_H4;
-    int16_t dig_H5;
-    uint8_t dig_H6;
-} bme280_calib_t;
+    uint8_t  dig_H1;
+    int16_t  dig_H2;
+    uint8_t  dig_H3;
+    int16_t  dig_H4;
+    int16_t  dig_H5;
+    int8_t   dig_H6;
+} __attribute__((packed)) bme280_calib_humidity_t;
 
 typedef struct {
     uint8_t im_update : 1;

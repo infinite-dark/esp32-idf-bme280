@@ -6,12 +6,13 @@
 static const char* const API_TAG = "bme280_api";
 
 struct bme280_sensor {
-    i2c_master_dev_handle_t dev_handle;
-    bme280_ctrl_meas_t      ctrl_meas;
-    bme280_ctrl_hum_t       ctrl_hum;
-    bme280_config_t         config;
-    bme280_status_t         status;
-    bme280_calib_t          calib;
+    i2c_master_dev_handle_t     dev_handle;
+    bme280_ctrl_meas_t          ctrl_meas;
+    bme280_ctrl_hum_t           ctrl_hum;
+    bme280_config_t             config;
+    bme280_status_t             status;
+    bme280_calib_temp_press_t   tp_calib;
+    bme280_calib_humidity_t     h_calib;
 };
 
 
@@ -72,6 +73,12 @@ static inline esp_err_t bme280_read_reg(i2c_master_dev_handle_t dev, const uint8
 
 }
 
+static inline esp_err_t bme280_read_reg_many(i2c_master_dev_handle_t dev, const uint8_t start_reg, const size_t count, uint8_t * const resp) {
+
+    return i2c_master_transmit_receive(dev, &start_reg, 1, resp, count, I2C_TIMEOUT_MS_DEFAULT);
+
+}
+
 static inline esp_err_t bme280_write_reg(i2c_master_dev_handle_t dev, const uint8_t reg, const uint8_t value) {
 
     const uint8_t buffer[2] = { reg, value };
@@ -97,7 +104,20 @@ esp_err_t bme280_init(bme280_handle_t bme280_sensor, const bme280_device_config_
     ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to soft-reset");
 
     ESP_LOGI(API_TAG, "Loading calibration parameters...");
-    // TODO
+    ret = bme280_read_reg_many(bme280_sensor->dev_handle, BME280_CALIB_TEMP_PRES_FIRST_REG, BME280_CALIB_TEMP_PRESS_REG_COUNT, bme280_sensor->tp_calib.raw);
+    ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to read temperature and pressure calibration data");
+
+    uint8_t hc_buf[BME280_CALIB_HUMIDITY_REG_COUNT - 1] = { 0 };
+    ret = bme280_read_reg(bme280_sensor->dev_handle, BME280_CALIB_HUMIDITY_FIRST_REG, &bme280_sensor->h_calib.dig_H1);
+    ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to read humidity calibration data");
+    ret = bme280_read_reg_many(bme280_sensor->dev_handle, BME280_CALIB_HUMIDITY_SECOND_REG, BME280_CALIB_HUMIDITY_REG_COUNT - 1, hc_buf);
+    ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to read humidity calibration data");
+
+    bme280_sensor->h_calib.dig_H2 = (int16_t)(hc_buf[0] | ((uint16_t)hc_buf[1] << 8));
+    bme280_sensor->h_calib.dig_H3 = hc_buf[2];
+    bme280_sensor->h_calib.dig_H4 = (int16_t)((int8_t)hc_buf[3] << 4 | (hc_buf[4] & 0x0F) );
+    bme280_sensor->h_calib.dig_H5 = (int16_t)((int8_t)hc_buf[5] << 4 | hc_buf[4] >> 4);
+    bme280_sensor->h_calib.dig_H6 = (int8_t)hc_buf[6];
 
     ESP_LOGI(API_TAG, "Applying sensor configuration...");
     // TODO
@@ -109,10 +129,7 @@ esp_err_t bme280_init(bme280_handle_t bme280_sensor, const bme280_device_config_
 
 esp_err_t bme280_delete(bme280_handle_t * const bme280_sensor) {
 
-    if (bme280_sensor == NULL || *bme280_sensor == NULL) {
-        ESP_LOGW(API_TAG, "Invalid argument - attempting to delete NULL");  // TODO: fix message later
-        return ESP_ERR_INVALID_ARG;
-    }
+    ESP_RETURN_ON_FALSE(bme280_sensor && *bme280_sensor, ESP_ERR_INVALID_ARG, API_TAG, "Invalid arguments (attempting to delete NULL)");
 
     i2c_master_bus_rm_device((*bme280_sensor)->dev_handle);
     free(*bme280_sensor);
@@ -126,9 +143,9 @@ int32_t compensate_temperature(const bme280_const_handle_t sensor, const int32_t
 
     int32_t var1, var2, T;
 
-    var1 = (((adc_T >> 3) - ((int32_t)sensor->calib.dig_T1 << 1)) * ((int32_t)sensor->calib.dig_T2)) >> 11;
-    var2 = (((((adc_T >> 4) - ((int32_t)sensor->calib.dig_T1)) * ((adc_T >> 4) - ((int32_t)sensor->calib.dig_T1))) >> 12)
-        * ((int32_t)sensor->calib.dig_T3)) >> 14;
+    var1 = (((adc_T >> 3) - ((int32_t)sensor->tp_calib.calib.dig_T1 << 1)) * ((int32_t)sensor->tp_calib.calib.dig_T2)) >> 11;
+    var2 = (((((adc_T >> 4) - ((int32_t)sensor->tp_calib.calib.dig_T1)) * ((adc_T >> 4) - ((int32_t)sensor->tp_calib.calib.dig_T1))) >> 12)
+        * ((int32_t)sensor->tp_calib.calib.dig_T3)) >> 14;
 
     *T_fine = var1 + var2;
     T = (*T_fine * 5 + 128) >> 8;
