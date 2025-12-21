@@ -23,8 +23,10 @@ void app_main(void) {
     ESP_ERROR_CHECK(i2c_new_master_bus(&bus_config, &bus_handle));
 
     bme280_handle_t sensor = NULL;
-    ESP_ERROR_CHECK(bme280_create_default(bus_handle, BME280_I2C_ADDRESS_DEFAULT, &sensor));
+    bme280_device_config_t config = {0};
 
+    ESP_ERROR_CHECK(bme280_create_default(bus_handle, BME280_I2C_ADDRESS_DEFAULT, &sensor));
+    ESP_ERROR_CHECK(bme280_init(sensor, &config));
     if (sensor != NULL) {
         bme280_delete(&sensor);
     }

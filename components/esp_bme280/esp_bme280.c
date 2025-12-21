@@ -17,6 +17,8 @@ struct bme280_sensor {
 
 esp_err_t bme280_create(i2c_master_bus_handle_t bus_handle, const i2c_device_config_t * const dev_cfg, bme280_handle_t * const out_handle) {
 
+    ESP_LOGI(API_TAG, "Attempting to create BME280 sensor context...", dev_cfg->device_address);
+
     ESP_RETURN_ON_FALSE(bus_handle && dev_cfg && out_handle, ESP_ERR_INVALID_ARG, API_TAG, "Invalid arguments");
 
     esp_err_t ret;
@@ -34,14 +36,14 @@ esp_err_t bme280_create(i2c_master_bus_handle_t bus_handle, const i2c_device_con
     sensor->dev_handle = dev_handle;
     *out_handle = sensor;
 
-    ESP_LOGI(API_TAG, "Success creating BME280", dev_cfg->device_address);      // TODO: fix message later
+    ESP_LOGI(API_TAG, "Success creating BME280 context", dev_cfg->device_address);
 
     return ESP_OK;
 
 err_release:
     i2c_master_bus_rm_device(dev_handle);
 err_return:
-    ESP_LOGE(API_TAG, "Error creating BME280");     // TODO: fix message later
+    ESP_LOGE(API_TAG, "Failed to create BME280 context");
     return ret;
 
 }
@@ -79,11 +81,14 @@ static inline esp_err_t bme280_write_reg(i2c_master_dev_handle_t dev, const uint
 
 esp_err_t bme280_init(bme280_handle_t bme280_sensor, const bme280_device_config_t * const bme280_device_config) {
 
+    ESP_LOGI(API_TAG, "Beginning BME280 sensor initialization...");
+
     ESP_RETURN_ON_FALSE(bme280_sensor && bme280_device_config, ESP_ERR_INVALID_ARG, API_TAG, "Invalid arguments");
 
     esp_err_t ret;
-
     uint8_t chip_id;
+
+    ESP_LOGI(API_TAG, "Verifying sensor chip ID...");
     ret = bme280_read_reg(bme280_sensor->dev_handle, BME280_CHIP_ID_REG, &chip_id);
     ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to get chip ID");
     ESP_RETURN_ON_FALSE(chip_id == BME280_CHIP_ID_VAL, ret, API_TAG, "Invalid BME280 chip id: 0x%x (expected 0x%x)", chip_id, BME280_CHIP_ID_VAL);
@@ -91,7 +96,13 @@ esp_err_t bme280_init(bme280_handle_t bme280_sensor, const bme280_device_config_
     ret = bme280_write_reg(bme280_sensor->dev_handle, BME280_RESET_REG, BME280_RESET_WORD);
     ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to soft-reset");
 
+    ESP_LOGI(API_TAG, "Loading calibration parameters...");
     // TODO
+
+    ESP_LOGI(API_TAG, "Applying sensor configuration...");
+    // TODO
+
+    ESP_LOGI(API_TAG, "Success initializing the BME280 sensor");
     return ESP_OK;
 
 }
