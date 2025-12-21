@@ -1,6 +1,7 @@
 #include "esp_bme280.h"
 #include <esp_check.h>
 
+#define I2C_TIMEOUT_MS_DEFAULT     100
 
 static const char* const API_TAG = "bme280_api";
 
@@ -16,9 +17,7 @@ struct bme280_sensor {
 
 esp_err_t bme280_create(i2c_master_bus_handle_t bus_handle, const i2c_device_config_t * const dev_cfg, bme280_handle_t * const out_handle) {
 
-    if (bus_handle == NULL || dev_cfg == NULL || out_handle == NULL) {
-        return ESP_ERR_INVALID_ARG;
-    }
+    ESP_RETURN_ON_FALSE(bus_handle && dev_cfg && out_handle, ESP_ERR_INVALID_ARG, API_TAG, "Invalid arguments");
 
     esp_err_t ret;
 
@@ -26,15 +25,11 @@ esp_err_t bme280_create(i2c_master_bus_handle_t bus_handle, const i2c_device_con
     ret = i2c_master_bus_add_device(bus_handle, dev_cfg, &dev_handle);
     ESP_GOTO_ON_ERROR(ret, err_return, API_TAG, "Failed to add the device to the I2C bus");
 
-    ret = i2c_master_probe(bus_handle, dev_cfg->device_address, 100);
+    ret = i2c_master_probe(bus_handle, dev_cfg->device_address, I2C_TIMEOUT_MS_DEFAULT);
     ESP_GOTO_ON_ERROR(ret, err_release, API_TAG, "Failed to find the BME280 at address 0x%x", dev_cfg->device_address);
 
-    struct bme280_sensor * sensor = calloc(1, sizeof(*sensor));
-    if (!sensor) {
-        ESP_LOGE(API_TAG, "Failed to allocate the BME280 sensor context");
-        ret = ESP_ERR_NO_MEM;
-        goto err_release;
-    }
+    struct bme280_sensor * sensor = calloc(1, sizeof(struct bme280_sensor));
+    ESP_GOTO_ON_FALSE(sensor, ESP_ERR_NO_MEM, err_release, API_TAG, "Failed to allocate the BME280 sensor context");
 
     sensor->dev_handle = dev_handle;
     *out_handle = sensor;
@@ -66,6 +61,38 @@ esp_err_t bme280_create_default(i2c_master_bus_handle_t bus_handle, const uint8_
     };
 
     return bme280_create(bus_handle, &dev_cfg, out_handle);
+
+}
+
+static inline esp_err_t bme280_read_reg(i2c_master_dev_handle_t dev, const uint8_t reg, uint8_t * const resp) {
+
+    return i2c_master_transmit_receive(dev, &reg, 1, resp, 1, I2C_TIMEOUT_MS_DEFAULT);
+
+}
+
+static inline esp_err_t bme280_write_reg(i2c_master_dev_handle_t dev, const uint8_t reg, const uint8_t value) {
+
+    const uint8_t buffer[2] = { reg, value };
+    return i2c_master_transmit(dev, buffer, sizeof(buffer), I2C_TIMEOUT_MS_DEFAULT);
+
+}
+
+esp_err_t bme280_init(bme280_handle_t bme280_sensor, const bme280_device_config_t * const bme280_device_config) {
+
+    ESP_RETURN_ON_FALSE(bme280_sensor && bme280_device_config, ESP_ERR_INVALID_ARG, API_TAG, "Invalid arguments");
+
+    esp_err_t ret;
+
+    uint8_t chip_id;
+    ret = bme280_read_reg(bme280_sensor->dev_handle, BME280_CHIP_ID_REG, &chip_id);
+    ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to get chip ID");
+    ESP_RETURN_ON_FALSE(chip_id == BME280_CHIP_ID_VAL, ret, API_TAG, "Invalid BME280 chip id: 0x%x (expected 0x%x)", chip_id, BME280_CHIP_ID_VAL);
+
+    ret = bme280_write_reg(bme280_sensor->dev_handle, BME280_RESET_REG, BME280_RESET_WORD);
+    ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to soft-reset");
+
+    // TODO
+    return ESP_OK;
 
 }
 

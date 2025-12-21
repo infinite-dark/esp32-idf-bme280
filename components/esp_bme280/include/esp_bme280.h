@@ -9,6 +9,7 @@
 #define BME280_CHIP_ID_VAL          ((uint8_t)0x60)    // Default ID value
 
 #define BME280_RESET_REG            ((uint8_t)0xE0)    // Soft reset register
+#define BME280_RESET_WORD           ((uint8_t)0xB6)    // Magic value for soft reset
 #define BME280_STATUS_REG           ((uint8_t)0xF3)    // Measurement/result status register
 
 #define BME280_CTRL_HUM_REG         ((uint8_t)0xF2)    // Humidity oversampling control
@@ -131,7 +132,7 @@ typedef const bme280_sensor_t *bme280_const_handle_t;
 
 esp_err_t bme280_create(i2c_master_bus_handle_t bus_handle, const i2c_device_config_t * dev_cfg, bme280_handle_t *out_handle);
 esp_err_t bme280_create_default(i2c_master_bus_handle_t bus_handle, uint8_t dev_addr, bme280_handle_t *out_handle);
-esp_err_t bme280_init(bme280_handle_t bme280_sensor, bme280_device_config_t * bme280_device_config);
+esp_err_t bme280_init(bme280_handle_t bme280_sensor, const bme280_device_config_t * bme280_device_config);
 esp_err_t bme280_init_default(bme280_handle_t bme280_sensor);
 esp_err_t bme280_delete(bme280_handle_t * bme280_sensor);
 
