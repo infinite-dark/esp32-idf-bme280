@@ -1,5 +1,7 @@
+#include <stdlib.h>
 #include "esp_bme280.h"
 #include <esp_check.h>
+#include <freertos/FreeRTOS.h>
 
 #define I2C_TIMEOUT_MS_DEFAULT     100
 
@@ -18,18 +20,18 @@ struct bme280_sensor {
 
 esp_err_t bme280_create(i2c_master_bus_handle_t bus_handle, const i2c_device_config_t * const dev_cfg, bme280_handle_t * const out_handle) {
 
-    ESP_LOGI(API_TAG, "Attempting to create BME280 sensor context...", dev_cfg->device_address);
+    ESP_LOGI(API_TAG, "Attempting to create BME280 sensor context...");
 
     ESP_RETURN_ON_FALSE(bus_handle && dev_cfg && out_handle, ESP_ERR_INVALID_ARG, API_TAG, "Invalid arguments");
 
     esp_err_t ret;
 
+    ret = i2c_master_probe(bus_handle, dev_cfg->device_address, I2C_TIMEOUT_MS_DEFAULT);
+    ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to find the BME280 at address 0x%x", dev_cfg->device_address);
+
     i2c_master_dev_handle_t dev_handle;
     ret = i2c_master_bus_add_device(bus_handle, dev_cfg, &dev_handle);
     ESP_GOTO_ON_ERROR(ret, err_return, API_TAG, "Failed to add the device to the I2C bus");
-
-    ret = i2c_master_probe(bus_handle, dev_cfg->device_address, I2C_TIMEOUT_MS_DEFAULT);
-    ESP_GOTO_ON_ERROR(ret, err_release, API_TAG, "Failed to find the BME280 at address 0x%x", dev_cfg->device_address);
 
     struct bme280_sensor * sensor = calloc(1, sizeof(struct bme280_sensor));
     ESP_GOTO_ON_FALSE(sensor, ESP_ERR_NO_MEM, err_release, API_TAG, "Failed to allocate the BME280 sensor context");
@@ -37,15 +39,15 @@ esp_err_t bme280_create(i2c_master_bus_handle_t bus_handle, const i2c_device_con
     sensor->dev_handle = dev_handle;
     *out_handle = sensor;
 
-    ESP_LOGI(API_TAG, "Success creating BME280 context", dev_cfg->device_address);
-
+    ESP_LOGI(API_TAG, "Success creating BME280 context");
     return ESP_OK;
 
 err_release:
-    i2c_master_bus_rm_device(dev_handle);
+    ret = i2c_master_bus_rm_device(dev_handle);
+    if (ret != ESP_OK) ESP_LOGE(API_TAG, "Failed to remove I2C device");
 err_return:
     ESP_LOGE(API_TAG, "Failed to create BME280 context");
-    return ret;
+    return ESP_FAIL;
 
 }
 
@@ -86,43 +88,77 @@ static inline esp_err_t bme280_write_reg(i2c_master_dev_handle_t dev, const uint
 
 }
 
-esp_err_t bme280_init(bme280_handle_t bme280_sensor, const bme280_device_config_t * const bme280_device_config) {
-
-    ESP_LOGI(API_TAG, "Beginning BME280 sensor initialization...");
-
-    ESP_RETURN_ON_FALSE(bme280_sensor && bme280_device_config, ESP_ERR_INVALID_ARG, API_TAG, "Invalid arguments");
+static inline esp_err_t bme280_get_calibration_data(bme280_handle_t bme280_sensor) {
 
     esp_err_t ret;
-    uint8_t chip_id;
+    uint8_t hc_buf[BME280_CALIB_HUMIDITY_REG_COUNT - 1] = { 0 };
 
-    ESP_LOGI(API_TAG, "Verifying sensor chip ID...");
-    ret = bme280_read_reg(bme280_sensor->dev_handle, BME280_CHIP_ID_REG, &chip_id);
-    ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to get chip ID");
-    ESP_RETURN_ON_FALSE(chip_id == BME280_CHIP_ID_VAL, ret, API_TAG, "Invalid BME280 chip id: 0x%x (expected 0x%x)", chip_id, BME280_CHIP_ID_VAL);
-
-    ret = bme280_write_reg(bme280_sensor->dev_handle, BME280_RESET_REG, BME280_RESET_WORD);
-    ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to soft-reset");
-
-    ESP_LOGI(API_TAG, "Loading calibration parameters...");
     ret = bme280_read_reg_many(bme280_sensor->dev_handle, BME280_CALIB_TEMP_PRES_FIRST_REG, BME280_CALIB_TEMP_PRESS_REG_COUNT, bme280_sensor->tp_calib.raw);
     ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to read temperature and pressure calibration data");
-
-    uint8_t hc_buf[BME280_CALIB_HUMIDITY_REG_COUNT - 1] = { 0 };
     ret = bme280_read_reg(bme280_sensor->dev_handle, BME280_CALIB_HUMIDITY_FIRST_REG, &bme280_sensor->h_calib.dig_H1);
     ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to read humidity calibration data");
+
     ret = bme280_read_reg_many(bme280_sensor->dev_handle, BME280_CALIB_HUMIDITY_SECOND_REG, BME280_CALIB_HUMIDITY_REG_COUNT - 1, hc_buf);
     ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to read humidity calibration data");
 
     bme280_sensor->h_calib.dig_H2 = (int16_t)(hc_buf[0] | ((uint16_t)hc_buf[1] << 8));
     bme280_sensor->h_calib.dig_H3 = hc_buf[2];
-    bme280_sensor->h_calib.dig_H4 = (int16_t)((int8_t)hc_buf[3] << 4 | (hc_buf[4] & 0x0F) );
+    bme280_sensor->h_calib.dig_H4 = (int16_t)((int8_t)hc_buf[3] << 4 | (hc_buf[4] & 0x0F));
     bme280_sensor->h_calib.dig_H5 = (int16_t)((int8_t)hc_buf[5] << 4 | hc_buf[4] >> 4);
     bme280_sensor->h_calib.dig_H6 = (int8_t)hc_buf[6];
 
-    ESP_LOGI(API_TAG, "Applying sensor configuration...");
-    // TODO
+    return ESP_OK;
+
+}
+
+esp_err_t bme280_init(bme280_handle_t bme280_sensor, const bme280_device_config_t * const bme280_device_config) {
+
+    ESP_RETURN_ON_FALSE(bme280_sensor && bme280_device_config, ESP_ERR_INVALID_ARG, API_TAG, "Invalid arguments");
+
+    ESP_LOGI(API_TAG, "Initializing the BME280 sensor...");
+
+    esp_err_t ret;
+    uint8_t chip_id;
+
+    ret = bme280_read_reg(bme280_sensor->dev_handle, BME280_CHIP_ID_REG, &chip_id);
+    ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to read chip ID");
+    ESP_RETURN_ON_FALSE(chip_id == BME280_CHIP_ID_VAL, ESP_ERR_INVALID_RESPONSE, API_TAG, "Invalid chip ID");
+
+    ret = bme280_write_reg(bme280_sensor->dev_handle, BME280_RESET_REG, BME280_RESET_WORD);
+    ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to reset sensor");
+
+    do {
+        bme280_read_reg(bme280_sensor->dev_handle, BME280_STATUS_REG, (uint8_t*)&bme280_sensor->status);
+        vTaskDelay(pdMS_TO_TICKS(1));
+    } while (bme280_sensor->status.im_update);
+
+    ret = bme280_get_calibration_data(bme280_sensor);
+    ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to load calibration data");
+
+    bme280_sensor->ctrl_meas.osrs_t = bme280_device_config->temperature_oversampling;
+    bme280_sensor->ctrl_meas.osrs_p = bme280_device_config->pressure_oversampling;
+    bme280_sensor->ctrl_meas.mode = bme280_device_config->measurement_mode;
+    bme280_sensor->ctrl_hum.osrs_h = bme280_device_config->humidity_oversampling;
+    bme280_sensor->config.filter = bme280_device_config->filter_mode;
+    bme280_sensor->config.t_sb = bme280_device_config->standby_duration;
+    bme280_sensor->config.spi3w_en = 0;
+
+    uint8_t reg_buf;
+
+    memcpy(&reg_buf, &bme280_sensor->config, 1);
+    ret = bme280_write_reg(bme280_sensor->dev_handle, BME280_CONFIG_REG, reg_buf);
+    ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to write config");
+
+    memcpy(&reg_buf, &bme280_sensor->ctrl_hum, 1);
+    ret = bme280_write_reg(bme280_sensor->dev_handle, BME280_CTRL_HUM_REG, reg_buf);
+    ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to write ctrl_hum");
+
+    memcpy(&reg_buf, &bme280_sensor->ctrl_meas, 1);
+    ret = bme280_write_reg(bme280_sensor->dev_handle, BME280_CTRL_MEAS_REG, reg_buf);
+    ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to write ctrl_meas");
 
     ESP_LOGI(API_TAG, "Success initializing the BME280 sensor");
+
     return ESP_OK;
 
 }
@@ -131,11 +167,23 @@ esp_err_t bme280_delete(bme280_handle_t * const bme280_sensor) {
 
     ESP_RETURN_ON_FALSE(bme280_sensor && *bme280_sensor, ESP_ERR_INVALID_ARG, API_TAG, "Invalid arguments (attempting to delete NULL)");
 
-    i2c_master_bus_rm_device((*bme280_sensor)->dev_handle);
+    if (i2c_master_bus_rm_device((*bme280_sensor)->dev_handle) != ESP_OK) {
+        ESP_LOGW(API_TAG, "Failed to remove the device from the bus");
+    }
+
     free(*bme280_sensor);
     *bme280_sensor = NULL;
 
     return ESP_OK;
+
+}
+
+int32_t simple_test(const bme280_const_handle_t sensor) {
+
+    uint8_t raw_data[3];
+    bme280_read_reg_many(sensor->dev_handle, BME280_TEMPERATURE_REG, 3, raw_data);
+    int32_t adc_T = (int32_t)((raw_data[0] << 12) | (raw_data[1] << 4) | (raw_data[2] >> 4));
+    return adc_T;
 
 }
 

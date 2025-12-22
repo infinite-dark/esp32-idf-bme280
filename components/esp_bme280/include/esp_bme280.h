@@ -1,4 +1,5 @@
 #pragma once
+#include <stdint.h>
 #include <driver/i2c_master.h>
 
 
@@ -94,6 +95,8 @@ typedef union {
     uint8_t raw[BME280_CALIB_TEMP_PRESS_REG_COUNT];
 } bme280_calib_temp_press_t;
 
+static_assert(sizeof(bme280_calib_temp_press_t) == BME280_CALIB_TEMP_PRESS_REG_COUNT, "bme280_calib_temp_press_t must be exactly 24 bytes");
+
 typedef struct {
     uint8_t  dig_H1;
     int16_t  dig_H2;
@@ -103,6 +106,8 @@ typedef struct {
     int8_t   dig_H6;
 } __attribute__((packed)) bme280_calib_humidity_t;
 
+static_assert(sizeof(bme280_calib_humidity_t) == 9, "bme280_calib_humidity_t must be exactly 9 bytes");
+
 typedef struct {
     uint8_t im_update : 1;
     uint8_t padding_middle : 2;
@@ -110,10 +115,14 @@ typedef struct {
     uint8_t padding_upper : 4;
 } __attribute__((packed)) bme280_status_t;
 
+static_assert(sizeof(bme280_status_t) == 1, "bme280_status_t must be exactly 1 byte");
+
 typedef struct {
     bme280_oversampling_t osrs_h : 3;
     uint8_t padding : 5;
 } __attribute__((packed)) bme280_ctrl_hum_t;
+
+static_assert(sizeof(bme280_ctrl_hum_t) == 1, "bme280_ctrl_hum_t must be exactly 1 byte");
 
 typedef struct {
     bme280_mode_t mode : 2;
@@ -121,12 +130,16 @@ typedef struct {
     bme280_oversampling_t osrs_t : 3;
 } __attribute__((packed)) bme280_ctrl_meas_t;
 
+static_assert(sizeof(bme280_ctrl_meas_t) == 1, "bme280_ctrl_meas_t must be exactly 1 byte");
+
 typedef struct {
     uint8_t spi3w_en : 1;
     uint8_t unused : 1;
     bme280_filter_t filter : 3;
     bme280_standby_duration_t t_sb : 3;
 } __attribute__((packed)) bme280_config_t;
+
+static_assert(sizeof(bme280_config_t) == 1, "bme280_config_t must be exactly 1 byte");
 
 typedef struct {
     bme280_mode_t measurement_mode;
@@ -148,4 +161,5 @@ esp_err_t bme280_init(bme280_handle_t bme280_sensor, const bme280_device_config_
 esp_err_t bme280_init_default(bme280_handle_t bme280_sensor);
 esp_err_t bme280_delete(bme280_handle_t * bme280_sensor);
 
+int32_t simple_test(bme280_const_handle_t sensor);
 int32_t compensate_temperature(bme280_const_handle_t sensor, int32_t adc_T, int32_t * T_fine);
