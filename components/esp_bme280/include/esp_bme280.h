@@ -152,8 +152,8 @@ typedef struct {
 
 
 typedef struct bme280_sensor bme280_sensor_t;
-typedef bme280_sensor_t *bme280_handle_t;
-typedef const bme280_sensor_t *bme280_const_handle_t;
+typedef bme280_sensor_t * bme280_handle_t;
+typedef const bme280_sensor_t * const bme280_const_handle_t;
 
 esp_err_t bme280_create(i2c_master_bus_handle_t bus_handle, const i2c_device_config_t * dev_cfg, bme280_handle_t *out_handle);
 esp_err_t bme280_create_default(i2c_master_bus_handle_t bus_handle, uint8_t dev_addr, bme280_handle_t *out_handle);
