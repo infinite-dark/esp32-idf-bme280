@@ -134,13 +134,29 @@ esp_err_t bme280_delete(bme280_handle_t * const bme280_sensor) {
 
 }
 
-int32_t simple_test(const bme280_const_handle_t bme280_sensor) {
+esp_err_t bme280_measure(const bme280_const_handle_t bme280_sensor, bme280_measurement_t * const output_handle) {
 
-    uint8_t raw_data[3];
-    bme280_wait_sensor_ready(bme280_sensor, pdMS_TO_TICKS(BME280_TIMEOUT_MS_DEFAULT));
-    bme280_read_reg_many(bme280_sensor, BME280_TEMPERATURE_REG, 3, raw_data);
-    int32_t adc_T = (int32_t)((raw_data[0] << 12) | (raw_data[1] << 4) | (raw_data[2] >> 4));
-    return adc_T;
+    ESP_RETURN_ON_FALSE(output_handle, ESP_ERR_INVALID_ARG, API_TAG, "Invalid arguments");
+
+    uint8_t raw_data[8];
+    esp_err_t ret;
+
+    ret = bme280_wait_sensor_ready(bme280_sensor, pdMS_TO_TICKS(BME280_TIMEOUT_MS_DEFAULT));
+    ESP_RETURN_ON_ERROR(ret, API_TAG, "Sensor likely timed out");
+
+    ret = bme280_read_reg_many(bme280_sensor, BME280_PRESSURE_REG, 8, raw_data);
+    ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to read measurement registers");
+
+    int32_t adc_T = (int32_t)((raw_data[3] << 12) | (raw_data[4] << 4) | (raw_data[5] >> 4));
+    int32_t adc_P = (int32_t)((raw_data[0] << 12) | (raw_data[1] << 4) | (raw_data[2] >> 4));
+    int32_t adc_H = (int32_t)(((int32_t)raw_data[6] << 8) | (int32_t)raw_data[7]);
+
+    int32_t t_fine;
+    output_handle->temperature = compensate_temperature(bme280_sensor, adc_T, &t_fine) / 100.0;
+    output_handle->pressure = compensate_pressure(bme280_sensor, adc_P, t_fine) / 100.0;
+    output_handle->humidity = compensate_humidity(bme280_sensor, adc_H, t_fine) / 1024.0;
+
+    return ESP_OK;
 
 }
 
@@ -316,6 +332,6 @@ uint32_t compensate_humidity(const bme280_const_handle_t bme280_sensor, const in
     v_x1_u32r = (v_x1_u32r < 0 ? 0 : v_x1_u32r);
     v_x1_u32r = (v_x1_u32r > 419430400 ? 419430400 : v_x1_u32r);
 
-    return (uint32_t)(v_x1_u32r>>12);
+    return (uint32_t)(v_x1_u32r >> 12);
     
 }

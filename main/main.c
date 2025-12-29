@@ -38,11 +38,11 @@ void app_main(void) {
 
     ESP_LOGI(TAG, "Starting measurement loop...");
 
+    bme280_measurement_t results;
+
     while (1) {
-        int32_t adc_T = simple_test(sensor);
-        int32_t t_fine;
-        int32_t temp_final = compensate_temperature(sensor, adc_T, &t_fine);
-        printf("Temp: %.2f °C\n", temp_final/100.0);
+        bme280_measure(sensor, &results);
+        printf("Temp: %.2f°C\nPres: %.2fHPa\nHum: %.2f %%Rh\n\n", results.temperature, results.pressure, results.humidity);
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 

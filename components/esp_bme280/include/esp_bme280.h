@@ -150,6 +150,11 @@ typedef struct {
     bme280_standby_duration_t standby_duration;
 } bme280_device_config_t;
 
+typedef struct {
+    double temperature;
+    double pressure;
+    double humidity;
+} bme280_measurement_t;
 
 typedef struct bme280_sensor bme280_sensor_t;
 typedef bme280_sensor_t * bme280_handle_t;
@@ -161,4 +166,4 @@ esp_err_t bme280_init(bme280_handle_t bme280_sensor, const bme280_device_config_
 esp_err_t bme280_init_default(bme280_handle_t bme280_sensor);
 esp_err_t bme280_delete(bme280_handle_t * bme280_sensor);
 
-int32_t simple_test(bme280_const_handle_t sensor);
+esp_err_t bme280_measure(bme280_const_handle_t bme280_sensor, bme280_measurement_t * output_handle);
