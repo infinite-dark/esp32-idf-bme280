@@ -162,4 +162,3 @@ esp_err_t bme280_init_default(bme280_handle_t bme280_sensor);
 esp_err_t bme280_delete(bme280_handle_t * bme280_sensor);
 
 int32_t simple_test(bme280_const_handle_t sensor);
-int32_t compensate_temperature(bme280_const_handle_t sensor, int32_t adc_T, int32_t * T_fine);
