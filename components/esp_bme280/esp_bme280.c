@@ -236,6 +236,7 @@ int32_t simple_test(const bme280_const_handle_t bme280_sensor) {
 
 }
 
+//divide by 100 for decimal value
 int32_t compensate_temperature(const bme280_const_handle_t bme280_sensor, const int32_t adc_T, int32_t * const T_fine) {
 
     int32_t var1, var2, T;
@@ -251,6 +252,7 @@ int32_t compensate_temperature(const bme280_const_handle_t bme280_sensor, const 
 
 }
 
+//divide by 100 for decimal value
 uint32_t compensate_pressure(const bme280_const_handle_t bme280_sensor, const int32_t adc_P, const int32_t T_fine) {
 
     int32_t var1, var2;
@@ -281,5 +283,26 @@ uint32_t compensate_pressure(const bme280_const_handle_t bme280_sensor, const in
     P = (uint32_t)((int32_t)P + ((var1 + var2 + bme280_sensor->tp_calib.calib.dig_P7) >> 4));
 
     return P;
+    
+}
+
+// divide by 1024 for decimal value
+uint32_t compensate_humidity(const bme280_const_handle_t bme280_sensor, const int32_t adc_H, const int32_t T_fine) {
+
+    int32_t v_x1_u32r;
+    v_x1_u32r = (T_fine - ((int32_t)76800));
+
+    v_x1_u32r = (((((adc_H << 14) - (((int32_t)bme280_sensor->h_calib.dig_H4) << 20)
+                - (((int32_t)bme280_sensor->h_calib.dig_H5) * v_x1_u32r)) + ((int32_t)16384)) >> 15)
+                * (((((((v_x1_u32r * ((int32_t)bme280_sensor->h_calib.dig_H6)) >> 10)
+                          * (((v_x1_u32r * ((int32_t)bme280_sensor->h_calib.dig_H3)) >> 11)
+                          + ((int32_t)32768))) >> 10)
+                          + ((int32_t)2097152)) * ((int32_t)bme280_sensor->h_calib.dig_H2) + 8192) >> 14));
+
+    v_x1_u32r = (v_x1_u32r - (((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) * ((int32_t)bme280_sensor->h_calib.dig_H1)) >> 4));
+    v_x1_u32r = (v_x1_u32r < 0 ? 0 : v_x1_u32r);
+    v_x1_u32r = (v_x1_u32r > 419430400 ? 419430400 : v_x1_u32r);
+
+    return (uint32_t)(v_x1_u32r>>12);
     
 }
