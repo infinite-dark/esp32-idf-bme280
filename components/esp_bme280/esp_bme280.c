@@ -3,7 +3,8 @@
 #include <esp_check.h>
 #include <freertos/FreeRTOS.h>
 
-#define BME280_TIMEOUT_MS_DEFAULT     100
+#define BME280_TIMEOUT_MS_DEFAULT       100
+#define BME280_I2C_FREQUENCY_DEFAULT    400000
 
 static const char* const API_TAG = "bme280_api";
 
@@ -72,7 +73,7 @@ esp_err_t bme280_create_default(i2c_master_bus_handle_t bus_handle, const uint8_
     const i2c_device_config_t dev_cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = dev_addr,
-        .scl_speed_hz = 400000,
+        .scl_speed_hz = BME280_I2C_FREQUENCY_DEFAULT,
         .scl_wait_us = 0,
         .flags = { .disable_ack_check = false }
     };
@@ -265,7 +266,6 @@ static inline esp_err_t bme280_load_calibration_data(bme280_handle_t bme280_sens
 
 }
 
-//divide by 100 for decimal value
 int32_t compensate_temperature(const bme280_const_handle_t bme280_sensor, const int32_t adc_T, int32_t * const T_fine) {
 
     int32_t var1, var2, T;
@@ -281,7 +281,6 @@ int32_t compensate_temperature(const bme280_const_handle_t bme280_sensor, const 
 
 }
 
-//divide by 100 for decimal value
 uint32_t compensate_pressure(const bme280_const_handle_t bme280_sensor, const int32_t adc_P, const int32_t T_fine) {
 
     int32_t var1, var2;
@@ -315,7 +314,6 @@ uint32_t compensate_pressure(const bme280_const_handle_t bme280_sensor, const in
     
 }
 
-// divide by 1024 for decimal value
 uint32_t compensate_humidity(const bme280_const_handle_t bme280_sensor, const int32_t adc_H, const int32_t T_fine) {
 
     int32_t v_x1_u32r;
