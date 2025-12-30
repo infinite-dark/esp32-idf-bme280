@@ -126,7 +126,7 @@
 #define BME280_CALIB_HUMIDITY_FIRST_REG     ((uint8_t)0xA1)
 
 /**
- * @brief Starting register for humidity calibration data (second part, non-contiguous).
+ * @brief Starting register for humidity calibration data (second part, non-continuous).
  */
 #define BME280_CALIB_HUMIDITY_SECOND_REG    ((uint8_t)0xE1)
 
@@ -136,7 +136,7 @@
 #define BME280_CALIB_HUMIDITY_LAST_REG      ((uint8_t)0xE7)
 
 /**
- * @brief Total byte count for humidity calibration data (8 bytes, non-contiguous read).
+ * @brief Total byte count for humidity calibration data (8 bytes, non-continuous read).
  */
 #define BME280_CALIB_HUMIDITY_REG_COUNT     8
 
@@ -266,7 +266,7 @@ static_assert(sizeof(bme280_calib_temp_press_t) == BME280_CALIB_TEMP_PRESS_REG_C
 /**
  * @brief Struct for humidity calibration coefficients.
  *
- * Read from non-contiguous registers: 0xA1 (H1), 0xE1-E7 (H2-H6).
+ * Read from non-continuous registers: 0xA1 (H1), 0xE1-E7 (H2-H6).
  *
  * @note dig_H4 and dig_H5 require bit manipulation during parsing.
  */
