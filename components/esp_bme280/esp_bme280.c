@@ -20,7 +20,7 @@ struct bme280_sensor {
 static inline esp_err_t bme280_read_reg(bme280_const_handle_t bme280_sensor, uint8_t reg, uint8_t * resp);
 static inline esp_err_t bme280_read_reg_many(bme280_const_handle_t bme280_sensor, uint8_t start_reg, size_t count, uint8_t * resp);
 static inline esp_err_t bme280_write_reg_raw(bme280_const_handle_t bme280_sensor, uint8_t reg, uint8_t value);
-static inline esp_err_t bme280_write_reg_field(bme280_const_handle_t bme280_sensor, uint8_t reg_addr, const void * field_ptr, const char * field_name);
+static inline esp_err_t bme280_write_reg_field(bme280_const_handle_t bme280_sensor, uint8_t reg_addr, const void * field_ptr);
 static inline esp_err_t bme280_wait_sensor_ready(bme280_const_handle_t bme280_sensor, TickType_t timeout_ticks);
 
 static inline esp_err_t bme280_assign_config_params(bme280_handle_t bme280_sensor, const bme280_device_config_t * bme280_device_config);
@@ -107,11 +107,11 @@ esp_err_t bme280_init(bme280_handle_t bme280_sensor, const bme280_device_config_
     ret = bme280_assign_config_params(bme280_sensor, bme280_device_config);
     ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to load calibration data");
 
-    ret = bme280_write_reg_field(bme280_sensor, BME280_CONFIG_REG, &bme280_sensor->config, "config");
+    ret = bme280_write_reg_field(bme280_sensor, BME280_CONFIG_REG, &bme280_sensor->config);
     ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to write config");
-    ret = bme280_write_reg_field(bme280_sensor, BME280_CTRL_HUM_REG, &bme280_sensor->ctrl_hum, "ctrl_hum");
+    ret = bme280_write_reg_field(bme280_sensor, BME280_CTRL_HUM_REG, &bme280_sensor->ctrl_hum);
     ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to write ctrl_hum");
-    ret = bme280_write_reg_field(bme280_sensor, BME280_CTRL_MEAS_REG, &bme280_sensor->ctrl_meas, "ctrl_meas");
+    ret = bme280_write_reg_field(bme280_sensor, BME280_CTRL_MEAS_REG, &bme280_sensor->ctrl_meas);
     ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to write ctrl_meas");
 
     ESP_LOGI(API_TAG, "Success initializing the BME280 sensor");
@@ -137,10 +137,16 @@ esp_err_t bme280_delete(bme280_handle_t * const bme280_sensor) {
 
 esp_err_t bme280_measure(const bme280_const_handle_t bme280_sensor, bme280_measurement_t * const output_handle) {
 
-    ESP_RETURN_ON_FALSE(output_handle, ESP_ERR_INVALID_ARG, API_TAG, "Invalid arguments");
+    ESP_RETURN_ON_FALSE(bme280_sensor && output_handle, ESP_ERR_INVALID_ARG, API_TAG, "Invalid arguments");
+    ESP_RETURN_ON_FALSE(bme280_sensor->ctrl_meas.mode > BME280_MODE_SLEEP, ESP_ERR_INVALID_STATE, API_TAG, "Sensor in sleep mode");
 
     uint8_t raw_data[8];
     esp_err_t ret;
+
+    if (bme280_sensor->ctrl_meas.mode == BME280_MODE_FORCED || bme280_sensor->ctrl_meas.mode == BME280_MODE_FORCED_ALT) {
+        ret = bme280_write_reg_field(bme280_sensor, BME280_CTRL_MEAS_REG, &bme280_sensor->ctrl_meas);
+        ESP_RETURN_ON_ERROR(ret, API_TAG, "Failed to write ctrl_meas to the sensor");
+    }
 
     ret = bme280_wait_sensor_ready(bme280_sensor, pdMS_TO_TICKS(BME280_TIMEOUT_MS_DEFAULT));
     ESP_RETURN_ON_ERROR(ret, API_TAG, "Sensor likely timed out");
@@ -180,7 +186,7 @@ static inline esp_err_t bme280_write_reg_raw(bme280_const_handle_t bme280_sensor
 
 }
 
-static inline esp_err_t bme280_write_reg_field(bme280_const_handle_t bme280_sensor, const uint8_t reg_addr, const void * const field_ptr, const char * const field_name) {
+static inline esp_err_t bme280_write_reg_field(bme280_const_handle_t bme280_sensor, const uint8_t reg_addr, const void * const field_ptr) {
 
     uint8_t value;
     memcpy(&value, field_ptr, 1);
@@ -244,6 +250,8 @@ static inline esp_err_t bme280_assign_config_params(bme280_handle_t bme280_senso
 }
 
 static inline esp_err_t bme280_load_calibration_data(bme280_handle_t bme280_sensor) {
+
+    ESP_RETURN_ON_FALSE(bme280_sensor, ESP_ERR_INVALID_ARG, API_TAG, "Invalid arguments");
 
     esp_err_t ret;
     uint8_t hc_buf[BME280_CALIB_HUMIDITY_REG_COUNT - 1] = { 0 };
