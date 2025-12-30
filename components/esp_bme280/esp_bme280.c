@@ -420,7 +420,7 @@ static inline esp_err_t bme280_load_calibration_data(bme280_handle_t bme280_sens
 }
 
 /* -------------------------------------------------------------------------
- * Official Bosch compensation formulas (slightly reformatted for clarity)
+ * Official Bosch compensation formulas
  * Source: Bosch Sensortec BME280 datasheet / reference code (as per appendix A)
  * Link: https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf
  * ------------------------------------------------------------------------- */
